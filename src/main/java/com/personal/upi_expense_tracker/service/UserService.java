@@ -1,13 +1,12 @@
 package com.personal.upi_expense_tracker.service;
 
 import com.personal.upi_expense_tracker.model.User;
-import com.personal.upi_expense_tracker.model.UserPrincipal;
 import com.personal.upi_expense_tracker.repository.UserRepo;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -16,20 +15,17 @@ import java.util.Optional;
 
 @Getter
 @Service
-public class UserService implements UserDetailsService {
+public class UserService {
 
     @Autowired
     UserRepo userRepo;
 
-    @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepo.findByUsername(username);
-        if (user == null){
-            System.out.println("User not found");
-            throw new UsernameNotFoundException("User not found");
-        }
-        return new UserPrincipal(user);
-    }
+    @Autowired
+    AuthenticationManager authManager;
+
+    @Autowired
+    private JWTService jwtService;
+
 
     private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
@@ -47,10 +43,19 @@ public class UserService implements UserDetailsService {
     }
 
     public void updateUser(User user) {
+        user.setPassword(encoder.encode(user.getPassword()));
         userRepo.save(user);
     }
 
     public void deleteUser(int userId) {
         userRepo.deleteById(userId);
+    }
+
+    public String verify(User user) {
+        Authentication authentication = authManager.authenticate(new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword()));
+        if (authentication.isAuthenticated()){
+            return jwtService.generateToken(user.getUsername());
+        }
+        return "Fail";
     }
 }
