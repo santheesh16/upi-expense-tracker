@@ -1,7 +1,9 @@
 package com.personal.upi_expense_tracker.config;
 
 import com.personal.upi_expense_tracker.filter.JwtFilter;
+import com.personal.upi_expense_tracker.service.CustomOAuth2UserService;
 import com.personal.upi_expense_tracker.service.CustomUserDetailsService;
+import com.personal.upi_expense_tracker.service.JWTService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +16,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -25,6 +28,12 @@ public class SecurityConfig {
     private CustomUserDetailsService userDetailsService;
 
     @Autowired
+    private CustomOAuth2UserService customOAuth2UserService;
+
+    @Autowired
+    private JWTService jwtService;
+
+    @Autowired
     private JwtFilter jwtFilter;
 
     @Bean
@@ -32,10 +41,18 @@ public class SecurityConfig {
 
         return http.csrf(customizer -> customizer.disable()).
                 authorizeHttpRequests(request -> request
-                        .requestMatchers("login", "register").permitAll()
+                        .requestMatchers("login", "register", "/oauth2/**").permitAll()
                         .anyRequest().authenticated()).
                 httpBasic(Customizer.withDefaults()).
-                sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                oauth2Login(oauth -> oauth
+                        .userInfoEndpoint().userService(customOAuth2UserService)
+                        .and()
+                        .successHandler(((request, response, authentication) -> {
+                            String username = ((OAuth2User) authentication.getPrincipal()).getAttribute("email");
+                            String token = jwtService.generateToken(username);
+                            response.sendRedirect("http://localhost:8080/users?token="+token);
+                        })))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
