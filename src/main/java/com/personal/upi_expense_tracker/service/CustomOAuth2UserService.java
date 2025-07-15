@@ -29,7 +29,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             User newUser = new User();
             newUser.setEmail(email);
             newUser.setGoogleId(user.getName());
-            newUser.setUsername(user.getAttribute("username"));
+            newUser.setUsername(email);
             newUser.setRole("USER");
             newUser.setCreatedAt(LocalDateTime.now());
             return userRepo.save(newUser);

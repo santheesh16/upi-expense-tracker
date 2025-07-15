@@ -31,6 +31,7 @@ public class UserService {
 
     public User register(User user) {
         user.setPassword(encoder.encode(user.getPassword()));
+        user.setUsername(user.getEmail());
         return userRepo.save(user);
     }
 
@@ -49,13 +50,5 @@ public class UserService {
 
     public void deleteUser(int userId) {
         userRepo.deleteById(userId);
-    }
-
-    public String verify(User user) {
-        Authentication authentication = authManager.authenticate(new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword()));
-        if (authentication.isAuthenticated()){
-            return jwtService.generateToken(user.getUsername());
-        }
-        return "Fail";
     }
 }
